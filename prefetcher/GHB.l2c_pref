@@ -1,0 +1,110 @@
+#include "cache.h"
+
+#define INDEX_TABLE_SIZE 256
+#define GHB_SIZE 256
+#define PREFETCH_LOOKAHEAD 4
+#define PREFETCH_DEGREE 4
+
+// 定义 GHB element
+struct GHBElement {
+    uint64_t cl_addr;
+    int16_t prev;
+};
+
+// 定义 index table
+int16_t IT[INDEX_TABLE_SIZE];
+
+// 定义 GHB
+GHBElement GHB[GHB_SIZE];
+int16_t GHB_end = 0;
+
+void CACHE::l2c_prefetcher_initialize() 
+{
+    std::cout << "CPU " << cpu << " L2C GHB prefetcher" << std::endl;
+    // 初始化IT
+    for(int i = 0; i < INDEX_TABLE_SIZE; i++){
+        IT[i] = -1;
+    }
+    // 初始化 GHB
+    for(int i = 0; i < GHB_SIZE; i++) {
+        GHB[i].cl_addr = 0;
+        GHB[i].prev = -1;
+    }
+}
+
+uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, uint8_t type, uint32_t metadata_in)
+{
+    // 如果GHB满了，需要将 GHB_end 处的 entry 移出
+    // 即使没满 GHB_end 处的 entry 是无效的 因此不会产生错误
+    // 重置 IT 和 GHB 中对应项
+    for(int i = 0; i < INDEX_TABLE_SIZE; i++) {
+        if(IT[i] == GHB_end) {
+            IT[i] = -1;
+        }
+    }
+    for(int i = 0; i < GHB_SIZE; i++) {
+        if(GHB[i].prev == GHB_end) {
+            GHB[i].prev = -1;
+        }
+    }
+    // 确定 IT 表中的索引
+    int indexIT = ip % INDEX_TABLE_SIZE;
+    uint64_t cl_addr = addr >> LOG2_BLOCK_SIZE;
+    // 如果 IT 表中该索引位是有效的 则需要将新的 push_entry 串入之前的链表中
+    GHB[GHB_end].cl_addr = cl_addr;
+    GHB[GHB_end].prev = IT[indexIT];
+    IT[indexIT] = GHB_end;
+    // 判断最近三次的 stride 是否一致
+    int16_t index = GHB_end;
+    GHB_end = (GHB_end + 1) % GHB_SIZE;
+    uint64_t last_cl_addr[3];
+    for(int i = 0; i < 3; i++) {
+        if(index == -1) {
+            return metadata_in;
+        }
+        last_cl_addr[i] = GHB[index].cl_addr;
+        index = GHB[index].prev;
+    }
+    int64_t stride1 = 0;
+    if (last_cl_addr[0] >= last_cl_addr[1])
+        stride1 = last_cl_addr[0] - last_cl_addr[1];
+    else {
+        stride1 = last_cl_addr[1] - last_cl_addr[0];
+        stride1 *= -1;
+    }
+    int64_t stride2 = 0;
+    if (last_cl_addr[1] >= last_cl_addr[2])
+        stride2 = last_cl_addr[1] - last_cl_addr[2];
+    else {
+        stride2 = last_cl_addr[2] - last_cl_addr[1];
+        stride2 *= -1;
+    }
+    // 如果相邻三次的 stride 相等 则进行预取
+    if(stride1 == stride2) {
+        for(int i = 0; i < PREFETCH_DEGREE; i ++) {
+            uint64_t pref_addr = (cl_addr + PREFETCH_LOOKAHEAD * (stride1 * (i + 1))) << LOG2_BLOCK_SIZE;
+            // 只有在同一个4kb的page中才进行预取
+            if((pref_addr >> LOG2_PAGE_SIZE) != (addr >> LOG2_PAGE_SIZE)) {
+                break;
+            }
+            // 判断是否需要填充 LLC
+            if(MSHR.occupancy < (MSHR.SIZE >> 1)) {
+                prefetch_line(ip, addr, pref_addr, FILL_L2, 0);
+            }
+            else {
+                prefetch_line(ip, addr, pref_addr, FILL_LLC, 0);
+            }
+        }
+    }
+    return metadata_in;
+}
+
+uint32_t CACHE::l2c_prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in)
+{
+    return metadata_in;
+}
+
+void CACHE::l2c_prefetcher_final_stats()
+{
+    std::cout << "CPU " << cpu << " L2C GHB prefetcher final stats" << std::endl;
+}

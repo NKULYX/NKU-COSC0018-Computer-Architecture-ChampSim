@@ -1,0 +1,1 @@
+python3 score.py ./bin/perceptron-no-GHB-no-LFU-1core ./traces
