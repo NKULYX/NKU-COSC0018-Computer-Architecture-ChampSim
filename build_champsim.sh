@@ -22,9 +22,9 @@ NORMAL=$(tput sgr0)
 
 ############## Default configuration ############
 BRANCH=perceptron
-L1D_PREFETCHER=no
+L1D_PREFETCHER=pangloss
 LLC_PREFETCHER=no
-LLC_REPLACEMENT=LFU
+LLC_REPLACEMENT=red
 NUM_CORE=1
 #################################################
 
