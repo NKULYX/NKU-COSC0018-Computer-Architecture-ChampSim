@@ -31,7 +31,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
 	}
 
 	int new_delta = 1 + L2C_DELTA_CACHE_SETS / 2;
-	int page_offset = (addr >> WORD_SIZE_OFFSET)  % (L2C_DELTA_CACHE_SETS / 2);
+	int page_offset = (addr >> LOG2_BLOCK_SIZE)  % (L2C_DELTA_CACHE_SETS / 2);
 	
 	// 如果 page_way!= L2C_PAGE_CACHE_WAYS 则证明 page 在 Page Cache 中 hit
     // 并且这个获取并鄙视由于预取的 miss 导致的
@@ -83,9 +83,9 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
 				// 如果满足预取条件 则进行预取
 				if(max_LFU[j] * 3 > set_LFU_sum && prefetch_count <= l2c_prefetch_degree) {
 					// 计算预取地址
-					uint64_t pref_addr = ((next_addr >> WORD_SIZE_OFFSET) 
+					uint64_t pref_addr = ((next_addr >> LOG2_BLOCK_SIZE) 
 							+ (L2C_Delta_Cache[next_delta][candidate_way[j]].next_delta - L2C_DELTA_CACHE_SETS / 2)) 
-							<< WORD_SIZE_OFFSET;
+							<< LOG2_BLOCK_SIZE;
 					uint64_t pref_page = pref_addr >> PAGE_SIZE_OFFSET;
 					// 判断预取的 block 是否在当前 page 中 并且确实需要进行预取
 					if((page == pref_page)) {
@@ -98,9 +98,9 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
 
 		// 向前走一步
 		next_delta = best_delta;
-		uint64_t pref_addr = ((next_addr >> WORD_SIZE_OFFSET)
+		uint64_t pref_addr = ((next_addr >> LOG2_BLOCK_SIZE)
 				+ (best_delta - L2C_DELTA_CACHE_SETS / 2))
-				<< WORD_SIZE_OFFSET;
+				<< LOG2_BLOCK_SIZE;
 		next_addr = pref_addr;
 	}
 

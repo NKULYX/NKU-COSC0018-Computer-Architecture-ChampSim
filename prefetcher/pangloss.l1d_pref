@@ -80,7 +80,7 @@ void CACHE::l1d_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit
 				if(max_LFU[j] * 3 > set_LFU_sum) {
 					// 计算预取地址
 					uint64_t pref_addr = ((next_addr >> WORD_SIZE_OFFSET) 
-							+ (L1D_Delta_Cache[best_delta][candidate_way[j]].next_delta - L1D_DELTA_CACHE_SETS / 2)) 
+							+ (L1D_Delta_Cache[next_delta][candidate_way[j]].next_delta - L1D_DELTA_CACHE_SETS / 2)) 
 							<< WORD_SIZE_OFFSET;
 					uint64_t pref_block = pref_addr >> LOG2_BLOCK_SIZE;
 					uint64_t pref_page = pref_addr >> PAGE_SIZE_OFFSET;
