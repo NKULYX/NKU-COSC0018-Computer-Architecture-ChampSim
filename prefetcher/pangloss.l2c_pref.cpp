@@ -34,7 +34,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
 	int page_offset = (addr >> LOG2_BLOCK_SIZE)  % (L2C_DELTA_CACHE_SETS / 2);
 	
 	// 如果 page_way!= L2C_PAGE_CACHE_WAYS 则证明 page 在 Page Cache 中 hit
-    // 并且这个获取并鄙视由于预取的 miss 导致的
+    // 并且这个获取并不是由于预取的 miss 导致的
 	if(page_way != L2C_PAGE_CACHE_WAYS && !((type == PREFETCH) && (cache_hit == 0))) {
 		int last_delta = L2C_Page_Cache[page_index][page_way].last_delta;
 		int last_offset = L2C_Page_Cache[page_index][page_way].last_offset;
@@ -48,7 +48,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
 	int next_delta = new_delta;
 	uint64_t next_addr = addr;
     int l2c_prefetch_degree = (MSHR.SIZE - MSHR.occupancy) * 2 / 3;
-    if((type == PREFETCH && cache_hit == 0)) {
+    if((type == PREFETCH) && (cache_hit == 0)) {
         l2c_prefetch_degree /= 2;
     }
 	for(int i = 0, prefetch_count = 0; i < l2c_prefetch_degree && prefetch_count < l2c_prefetch_degree; i++) {
@@ -81,7 +81,7 @@ uint32_t CACHE::l2c_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache
 			// 接下来判断前两个候选是否满足要求
 			for(int j = 0; j < 2; j++) {
 				// 如果满足预取条件 则进行预取
-				if(max_LFU[j] * 3 > set_LFU_sum && prefetch_count <= l2c_prefetch_degree) {
+				if(max_LFU[j] * 3 > set_LFU_sum && prefetch_count < l2c_prefetch_degree) {
 					// 计算预取地址
 					uint64_t pref_addr = ((next_addr >> LOG2_BLOCK_SIZE) 
 							+ (L2C_Delta_Cache[next_delta][candidate_way[j]].next_delta - L2C_DELTA_CACHE_SETS / 2)) 
