@@ -24,7 +24,7 @@ NORMAL=$(tput sgr0)
 BRANCH=perceptron
 L1D_PREFETCHER=pangloss
 LLC_PREFETCHER=no
-LLC_REPLACEMENT=red
+LLC_REPLACEMENT=shippp+red
 NUM_CORE=1
 #################################################
 

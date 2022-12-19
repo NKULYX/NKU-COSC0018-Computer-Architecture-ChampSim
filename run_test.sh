@@ -1,1 +1,1 @@
-python3 score.py ./bin/perceptron-pangloss-pangloss-no-red-1core ./traces
+python3 score.py ./bin/perceptron-pangloss-pangloss-no-shippp+red-1core ./traces
