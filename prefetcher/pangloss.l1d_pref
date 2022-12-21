@@ -58,7 +58,7 @@ void CACHE::l1d_prefetcher_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit
 		else {
 			// 由于概率超过 1/3 的节点不可能超过2个
 			int candidate_way[2];
-			int max_LFU[2] = {0};
+			int max_LFU[2] = {-1, -1};
 			// 计算在当前 set 中 LFU_count 的总和 进而计算概率
 			int set_LFU_sum = 0;
 			for(int j = 0; j < L1D_DELTA_CACHE_WAYS; j++) {

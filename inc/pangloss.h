@@ -93,7 +93,7 @@ static int get_l1d_next_best_transition (int delta) {
 	// 计算在当前 set 中 LFU_count 的总和 进而计算概率
 	// 并且找到最大的 LFU 值和对应的 way
 	int set_LFU_sum = 0;
-	int max_LFU = 0;
+	int max_LFU = -1;
 	int max_LFU_way = 0;
 	for(int j = 0; j < L1D_DELTA_CACHE_WAYS; j++) {
 		int lfu_count = L1D_Delta_Cache[delta][j].LFU_count;
@@ -193,7 +193,7 @@ static int get_l2c_next_best_transition (int delta) {
 	// 计算在当前 set 中 LFU_count 的总和 进而计算概率
 	// 并且找到最大的 LFU 值和对应的 way
 	int set_LFU_sum = 0;
-	int max_LFU = 0;
+	int max_LFU = -1;
 	int max_LFU_way = 0;
 	for(int j = 0; j < L2C_DELTA_CACHE_WAYS; j++) {
 		int lfu_count = L2C_Delta_Cache[delta][j].LFU_count;
