@@ -10,6 +10,8 @@
 #define SHCT_MAX 7
 
 uint32_t rrpv[LLC_SET][LLC_WAY];
+// 增加预取位
+bool is_prefetched[LLC_SET][LLC_WAY];
 
 // sampler structure
 class SAMPLER_class
@@ -46,7 +48,7 @@ class SHCT_class {
     uint32_t counter;
 
     SHCT_class() {
-        counter = 0;
+        counter = 1;
     };
 };
 SHCT_class SHCT[NUM_CPUS][SHCT_SIZE];
@@ -56,15 +58,16 @@ void CACHE::llc_initialize_replacement()
 {
     cout << "Initialize SHIP state" << endl;
 
-    for (int i=0; i<LLC_SET; i++) {
-        for (int j=0; j<LLC_WAY; j++) {
+    for (int i = 0; i < LLC_SET; i++) {
+        for (int j = 0; j < LLC_WAY; j++) {
             rrpv[i][j] = maxRRPV;
+            is_prefetched[i][j] = 0;
         }
     }
 
     // initialize sampler
-    for (int i=0; i<SAMPLER_SET; i++) {
-        for (int j=0; j<SAMPLER_WAY; j++) {
+    for (int i = 0; i < SAMPLER_SET; i++) {
+        for (int j = 0; j < SAMPLER_WAY; j++) {
             sampler[i][j].lru = j;
         }
     }
@@ -75,14 +78,13 @@ void CACHE::llc_initialize_replacement()
     unsigned long max_rand = 1048576;
     uint32_t my_set = LLC_SET;
     int do_again = 0;
-    for (int i=0; i<SAMPLER_SET; i++)
+    for (int i = 0; i < SAMPLER_SET; i++)
     {
         do 
         {
             do_again = 0;
             rand_seed = rand_seed * 1103515245 + 12345;
             rand_sets[i] = ((unsigned) ((rand_seed/65536) % max_rand)) % my_set;
-            // printf("Assign rand_sets[%d]: %u  LLC: %u\n", i, rand_sets[i], my_set);
             for (int j=0; j<i; j++) 
             {
                 if (rand_sets[i] == rand_sets[j]) 
@@ -92,7 +94,6 @@ void CACHE::llc_initialize_replacement()
                 }
             }
         } while (do_again);
-        // printf("rand_sets[%d]: %d\n", i, rand_sets[i]);
     }
 }
 
@@ -110,30 +111,22 @@ uint32_t is_it_sampled(uint32_t set)
 void update_sampler(uint32_t cpu, uint32_t s_idx, uint64_t address, uint64_t ip, uint8_t type)
 {
     SAMPLER_class *s_set = sampler[s_idx];
-    uint64_t tag = address / (64*LLC_SET); 
+    uint64_t tag = address / (64 * LLC_SET); 
     int match = -1;
 
     // check hit
-    for (match=0; match<SAMPLER_WAY; match++)
+    for (match = 0; match < SAMPLER_WAY; match++)
     {
         if (s_set[match].valid && (s_set[match].tag == tag))
         {
-            uint32_t SHCT_idx = s_set[match].ip % SHCT_PRIME;
-            if (SHCT[cpu][SHCT_idx].counter > 0)
-                SHCT[cpu][SHCT_idx].counter--;
-
-            /*
-            if (draw_transition)
-                printf("cycle: %lu SHCT: %d ip: 0x%llX SAMPLER_HIT cl_addr: 0x%llX page: 0x%llX block: %ld set: %d\n", 
-                ooo_cpu[cpu].current_cycle, SHCT[cpu][SHCT_idx].dead, s_set[match].ip, address>>6, address>>12, (address>>6) & 0x3F, s_idx);
-            */
-
+            // 在签名中加入 prefetch
+            uint32_t SHCT_idx = (s_set[match].ip << 1 + (type == PREFETCH)) % SHCT_PRIME;
+            // 仅在首次命中的时候递增 SHCT 表项
+            if (s_set[match].used == 0 && SHCT[cpu][SHCT_idx].counter < SHCT_MAX)
+                SHCT[cpu][SHCT_idx].counter++;
             //s_set[match].ip = ip; // SHIP does not update ip on sampler hit
             s_set[match].type = type; 
             s_set[match].used = 1;
-            //D(printf("sampler hit  cpu: %d  set: %d  way: %d  tag: %x  ip: %lx  type: %d  lru: %d\n",
-            //            cpu, rand_sets[s_idx], match, tag, ip, type, s_set[match].lru));
-
             break;
         }
     }
@@ -141,7 +134,7 @@ void update_sampler(uint32_t cpu, uint32_t s_idx, uint64_t address, uint64_t ip,
     // check invalid
     if (match == SAMPLER_WAY)
     {
-        for (match=0; match<SAMPLER_WAY; match++)
+        for (match = 0; match < SAMPLER_WAY; match++)
         {
             if (s_set[match].valid == 0)
             {
@@ -150,9 +143,6 @@ void update_sampler(uint32_t cpu, uint32_t s_idx, uint64_t address, uint64_t ip,
                 s_set[match].ip = ip;
                 s_set[match].type = type;
                 s_set[match].used = 0;
-
-                //D(printf("sampler invalid  cpu: %d  set: %d  way: %d  tag: %x  ip: %lx  type: %d  lru: %d\n",
-                //            cpu, rand_sets[s_idx], match, tag, ip, type, s_set[match].lru));
                 break;
             }
         }
@@ -161,30 +151,22 @@ void update_sampler(uint32_t cpu, uint32_t s_idx, uint64_t address, uint64_t ip,
     // miss
     if (match == SAMPLER_WAY)
     {
-        for (match=0; match<SAMPLER_WAY; match++)
+        for (match = 0; match < SAMPLER_WAY; match++)
         {
             if (s_set[match].lru == (SAMPLER_WAY-1)) // Sampler uses LRU replacement
             {
                 if (s_set[match].used == 0)
                 {
-                    uint32_t SHCT_idx = s_set[match].ip % SHCT_PRIME;
-                    if (SHCT[cpu][SHCT_idx].counter < SHCT_MAX)
-                        SHCT[cpu][SHCT_idx].counter++;
-
-                    /*
-                    if (draw_transition)
-                        printf("cycle: %lu SHCT: %d ip: 0x%llX SAMPLER_MISS cl_addr: 0x%llX page: 0x%llX block: %ld set: %d\n", 
-                        ooo_cpu[cpu].current_cycle, SHCT[cpu][SHCT_idx].dead, s_set[match].ip, address>>6, address>>12, (address>>6) & 0x3F, s_idx);
-                    */
+                    uint32_t SHCT_idx = (s_set[match].ip << 1 + (type == PREFETCH)) % SHCT_PRIME;
+                    // 换出的时候递减 SHCT
+                    if (SHCT[cpu][SHCT_idx].counter > 0)
+                        SHCT[cpu][SHCT_idx].counter--;
                 }
 
                 s_set[match].tag = tag;
                 s_set[match].ip = ip;
                 s_set[match].type = type;
-                s_set[match].used = 0;
-
-                //D(printf("sampler miss  cpu: %d  set: %d  way: %d  tag: %x  ip: %lx  type: %d  lru: %d\n",
-                //            cpu, rand_sets[s_idx], match, tag, ip, type, s_set[match].lru));
+                s_set[match].used = 0;\
                 break;
             }
         }
@@ -242,15 +224,14 @@ void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t wa
     if ((type == WRITEBACK) && ip)
         assert(0);
 
-    //cout << "CPU: " << cpu << "  LLC " << setw(9) << TYPE_NAME << " set: " << setw(5) << set << " way: " << setw(2) << way;
-    //cout << hex << " paddr: " << setw(12) << full_addr << " ip: " << setw(8) << ip << " victim_addr: " << victim_addr << dec << endl;
-    
     // handle writeback access
     if (type == WRITEBACK) {
-        if (hit)
+        if (hit) {
             return;
+        }
+        // 如果是换入并且miss 则RRPV设置为最大值
         else {
-            rrpv[set][way] = maxRRPV-1;
+            rrpv[set][way] = maxRRPV;
             return;
         }
     }
@@ -260,11 +241,23 @@ void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t wa
     if (s_idx < SAMPLER_SET)
         update_sampler(cpu, s_idx, full_addr, ip, type);
 
-    if (hit)
-        rrpv[set][way] = 0;
+    if (hit) {
+        // 如果命中的是predetched
+        if(is_prefetched[set][way]) {
+            if(type != PREFETCH) {
+                rrpv[set][way] = maxRRPV;
+                is_prefetched[set][way] = 0;
+            }
+        }
+        else {
+            rrpv[set][way] = 0;
+        }
+    }
     else {
         // SHIP prediction
-        uint32_t SHCT_idx = ip % SHCT_PRIME;
+        uint32_t SHCT_idx = (ip << 1 + (type == PREFETCH)) % SHCT_PRIME;
+
+        is_prefetched[set][way] = (type == PREFETCH);
 
         // sanity check
         if (SHCT_idx >= SHCT_PRIME)
@@ -272,6 +265,8 @@ void CACHE::llc_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t wa
 
         rrpv[set][way] = maxRRPV-1;
         if (SHCT[cpu][SHCT_idx].counter == SHCT_MAX)
+            rrpv[set][way] = (type == PREFETCH) ? 1 : 0;
+        else if(SHCT[cpu][SHCT_idx].counter == 0)
             rrpv[set][way] = maxRRPV;
     }
 }
