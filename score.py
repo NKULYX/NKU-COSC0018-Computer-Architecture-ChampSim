@@ -36,7 +36,7 @@ for path,d,filelist in os.walk(trace_file_path):
 cmd = "./run_champsim.sh " + bin_path + " 50 100 "
 
 print("please wait...")
-student_num = "tmplog"
+student_num = "tmplog_" + bin_path.split('/')[2]
 log_num = 0
 for trace in traces:
     trace_cmd = cmd + trace + "> " + student_num + "_" + str(log_num)
@@ -55,4 +55,3 @@ for i in range(log_num):
                 print("%s score: %f"  %(traces[int(filename.strip()[-1:])], float(line[t+5:t+12])))
 
 print("avg score: %.6f" %(res/log_num))
-os.system("rm -rf tmplog*")

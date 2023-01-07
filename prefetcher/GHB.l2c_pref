@@ -2,8 +2,8 @@
 
 #define INDEX_TABLE_SIZE 256
 #define GHB_SIZE 256
-#define PREFETCH_LOOKAHEAD 4
-#define PREFETCH_DEGREE 4
+#define PREFETCH_LOOKAHEAD 1
+#define PREFETCH_DEGREE 12
 
 // 定义 GHB element
 struct GHBElement {

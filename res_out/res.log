@@ -1,0 +1,54 @@
+bin_path:  ./bin/perceptron-no-no-no-lru-1core
+trace_file_path:  ./traces
+please wait...
+./traces/462.libquantum-714B.champsimtrace.xz score: 0.497990
+./traces/482.sphinx3-1100B.champsimtrace.xz score: 0.565470
+avg score: 0.531730
+bin_path:  ./bin/perceptron-no-next_line-no-lru-1core
+trace_file_path:  ./traces
+please wait...
+./traces/462.libquantum-714B.champsimtrace.xz score: 0.532500
+./traces/482.sphinx3-1100B.champsimtrace.xz score: 0.873420
+avg score: 0.702960
+bin_path:  ./bin/perceptron-no-GHB-no-lru-1core
+trace_file_path:  ./traces
+please wait...
+./traces/462.libquantum-714B.champsimtrace.xz score: 0.872910
+./traces/482.sphinx3-1100B.champsimtrace.xz score: 0.876560
+avg score: 0.874735
+bin_path:  ./bin/perceptron-no-GHB-no-LFU-1core
+trace_file_path:  ./traces
+please wait...
+./traces/462.libquantum-714B.champsimtrace.xz score: 0.872440
+./traces/482.sphinx3-1100B.champsimtrace.xz score: 0.885620
+avg score: 0.879030
+bin_path:  ./bin/perceptron-no-pangloss-no-lru-1core
+trace_file_path:  ./traces
+please wait...
+./traces/462.libquantum-714B.champsimtrace.xz score: 0.873010
+./traces/482.sphinx3-1100B.champsimtrace.xz score: 1.137620
+avg score: 1.005315
+bin_path:  ./bin/perceptron-pangloss-pangloss-no-lru-1core
+trace_file_path:  ./traces
+please wait...
+./traces/462.libquantum-714B.champsimtrace.xz score: 0.912930
+./traces/482.sphinx3-1100B.champsimtrace.xz score: 1.213850
+avg score: 1.063390
+bin_path:  ./bin/perceptron-pangloss-pangloss-no-red-1core
+trace_file_path:  ./traces
+please wait...
+./traces/462.libquantum-714B.champsimtrace.xz score: 0.921780
+./traces/482.sphinx3-1100B.champsimtrace.xz score: 1.277910
+avg score: 1.099845
+bin_path:  ./bin/perceptron-pangloss-pangloss-no-ship++-1core
+trace_file_path:  ./traces
+please wait...
+./traces/462.libquantum-714B.champsimtrace.xz score: 0.946390
+./traces/482.sphinx3-1100B.champsimtrace.xz score: 1.273010
+avg score: 1.109700
+bin_path:  ./bin/perceptron-pangloss-pangloss-no-shippp+red-1core
+trace_file_path:  ./traces
+please wait...
+./traces/462.libquantum-714B.champsimtrace.xz score: 0.973800
+./traces/482.sphinx3-1100B.champsimtrace.xz score: 1.276320
+avg score: 1.125060
